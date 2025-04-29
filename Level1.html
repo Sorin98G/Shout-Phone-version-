@@ -294,9 +294,18 @@
 </head>
 <body>
     <!-- Audio element pentru sunetul de shotgun -->
+    <!-- Adăugăm mai multe elemente audio pentru a permite suprapunerea sunetelor -->
     <audio id="shotgunSound" preload="auto">
         <source src="half-life-shotgun_B3q382p.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
+    </audio>
+    
+    <!-- Sunetele de rezervă pentru a evita problemele de overlap -->
+    <audio id="shotgunSound2" preload="auto">
+        <source src="half-life-shotgun_B3q382p.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="shotgunSound3" preload="auto">
+        <source src="half-life-shotgun_B3q382p.mp3" type="audio/mpeg">
     </audio>
 
     <!-- Containere pentru timer și mesaje de joc -->
@@ -334,6 +343,33 @@
     </div>
 
     <script>
+        // Hack pentru a forța redarea audio pe iOS și alte browsere mobile restrictive
+        (function() {
+            // Funcție pentru a debloca audio context
+            function unlockAudioContext(audioCtx) {
+                if (audioCtx.state === 'suspended') {
+                    const unlockAudio = function() {
+                        audioCtx.resume().then(() => {
+                            document.body.removeEventListener('touchstart', unlockAudio);
+                            document.body.removeEventListener('touchend', unlockAudio);
+                            document.body.removeEventListener('click', unlockAudio);
+                        });
+                    };
+                    
+                    document.body.addEventListener('touchstart', unlockAudio, false);
+                    document.body.addEventListener('touchend', unlockAudio, false);
+                    document.body.addEventListener('click', unlockAudio, false);
+                }
+            }
+            
+            // Inițializăm WebAudio API pentru a forța deblocarea sunetului
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (window.AudioContext) {
+                window.audioCtx = new window.AudioContext();
+                unlockAudioContext(window.audioCtx);
+            }
+        })();
+        
         // Variabile globale
         let score = 0;
         let lives = 3;
@@ -345,17 +381,25 @@
         let currentMole = null;
         let moleTimeout = null;
         let touchStarted = false;
+        let soundIndex = 0;
+        const MAX_SOUND_INSTANCES = 3; // Numărul de instanțe audio disponibile
         
         // Elemente DOM
         const container = document.querySelector('.container');
         const overlay = document.getElementById('overlay');
         const timerContainer = document.getElementById('timerContainer');
         const timerElement = document.getElementById('timer');
-        const shotgunSound = document.getElementById('shotgunSound');
         const gameContainer = document.getElementById('gameContainer');
         const bloodSplash = document.getElementById('bloodSplash');
         const gameOverContainer = document.getElementById('gameOver');
         const playAgainButton = document.getElementById('playAgain');
+        
+        // Colecția de sunete pentru shotgun
+        const shotgunSounds = [
+            document.getElementById('shotgunSound'),
+            document.getElementById('shotgunSound2'),
+            document.getElementById('shotgunSound3')
+        ];
         
         // Funcție pentru detectarea dispozitivului și orientării
         function detectDevice() {
@@ -431,26 +475,52 @@
             }
         }
 
-        // Funcție pentru a reda sunetul de shotgun
+        // Funcție îmbunătățită pentru a reda sunetul de shotgun folosind mai multe instanțe audio
         function playShotgunSound() {
-            // Resetează audio-ul la început (în cazul în care încă se redă)
-            shotgunSound.currentTime = 0;
+            // Folosim instanțe multiple de sunet pentru a evita conflictele
+            const currentSound = shotgunSounds[soundIndex];
             
-            // Redă sunetul
-            shotgunSound.play().catch(error => {
-                console.error("Error playing sound:", error);
-                soundPlaying = false;
-            });
+            // Resetăm sunetul pentru a ne asigura că se va auzi de fiecare dată
+            currentSound.pause();
+            currentSound.currentTime = 0;
+            currentSound.volume = 1.0;
             
-            // Eveniment pentru când sunetul s-a terminat
-            shotgunSound.onended = function() {
+            // Încercăm să redăm sunetul cu handling pentru erori
+            try {
+                // Forțăm redarea imediată
+                const playPromise = currentSound.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // Sunetul se redă cu succes
+                    }).catch(error => {
+                        console.error("Error playing sound:", error);
+                        
+                        // Încercăm să redăm un alt sunet din rezervă
+                        try {
+                            shotgunSounds[(soundIndex + 1) % MAX_SOUND_INSTANCES].play();
+                        } catch (backupError) {
+                            console.error("Backup sound also failed:", backupError);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Error initiating sound playback:", e);
+            }
+            
+            // Trecem la următoarea instanță audio pentru următoarea lovitură
+            soundIndex = (soundIndex + 1) % MAX_SOUND_INSTANCES;
+            
+            // Folosim un timeout pentru a programa următoarea cârtiță
+            // indiferent de starea sunetului
+            setTimeout(() => {
                 soundPlaying = false;
                 
                 // Programăm apariția următoarei cârtițe dacă jocul este încă activ
                 if (gameStarted && lives > 0 && !waitingForNextMole) {
                     scheduleNextMole();
                 }
-            };
+            }, 600); // Timeout puțin mai scurt pentru un ritm de joc mai rapid
         }
 
         // Funcție pentru a programa apariția aleatorie a următoarei cârtițe
@@ -680,6 +750,9 @@
                 setTimeout(updateLayout, 300);
             });
             
+            // Preîncarcă sunetele pentru a evita întârzierile la prima redare
+            preloadSounds();
+            
             // Configurăm zonele tactile
             setupTouchAreas();
             
@@ -689,6 +762,57 @@
             // Pornește numărătoarea inversă
             startCountdown();
         };
+        
+        // Preîncărcarea sunetelor pentru a asigura redarea corespunzătoare
+        function preloadSounds() {
+            // Încercăm să inițializăm sunetele devreme pentru a permite încărcarea completă
+            shotgunSounds.forEach(sound => {
+                // Încărcăm sunetul
+                sound.load();
+                
+                // Setăm volumul inițial
+                sound.volume = 1.0;
+                
+                // Setăm atributul preload
+                sound.preload = "auto";
+                
+                // Dezactivăm opțiunea de mute (în caz că browserul o are activată implicit)
+                sound.muted = false;
+                
+                // Încercăm să redăm și să oprim imediat sunetul pentru a-l "initializa"
+                try {
+                    const promise = sound.play();
+                    if (promise !== undefined) {
+                        promise.then(() => {
+                            // Sunetul a început să se redea, îl oprim imediat
+                            sound.pause();
+                            sound.currentTime = 0;
+                        }).catch(e => {
+                            // Probabil că browserul nu permite redarea automată fără interacțiune
+                            console.log("Preloading sound requires user interaction first");
+                        });
+                    }
+                } catch (e) {
+                    // Ignorăm erorile la preîncărcare
+                }
+            });
+            
+            // Adăugăm un event listener pentru primul click/tap pentru a debloca audio pe mobile
+            document.addEventListener('touchstart', unlockAudio, { once: true });
+            document.addEventListener('mousedown', unlockAudio, { once: true });
+        }
+        
+        // Funcție pentru a debloca audio-ul pe dispozitivele mobile
+        function unlockAudio() {
+            shotgunSounds.forEach(sound => {
+                sound.play().then(() => {
+                    sound.pause();
+                    sound.currentTime = 0;
+                }).catch(e => {
+                    console.log("Could not unlock audio:", e);
+                });
+            });
+        }
     </script>
 </body>
 </html>
