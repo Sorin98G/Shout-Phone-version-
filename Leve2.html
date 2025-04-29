@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Whack-a-Mole</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: url('background.jpg') no-repeat center center;
+            background-size: cover;
+            background-color: black;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 0, 0, 0);
+            pointer-events: none;
+            transition: background 0.3s ease;
+            z-index: 50;
+        }
+        .overlay.hit {
+            background: rgba(255, 0, 0, 0.3);
+        }
+        .container {
+            display: flex;
+            width: 1200px;
+            height: 600px;
+            background-image: url('Poza de fundal.png');
+            background-size: cover;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        .hole {
+            width: 400px;
+            height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            position: relative;
+            overflow: hidden;
+        }
+        .mole {
+            width: 500px;
+            height: 500px;
+            position: absolute;
+            cursor: pointer;
+            display: none;
+            background-image: url('urs_de_omarat-removebg-preview.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 100;
+        }
+        .score {
+            position: absolute;
+            top: 35px;
+            right: 210px;
+            font-size: 25px;
+            color: white;
+            z-index: 200;
+        }
+        .lives {
+            position: absolute;
+            top: 69px;
+            right: 220px;
+            font-size: 25px;
+            color: white;
+            z-index: 200;
+        }
+        .hover-image {
+            position: absolute;
+            max-width: 500px;
+            max-height: 500px;
+            display: none;
+            z-index: 999;
+        }
+        .blood-splash {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .timer-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .timer {
+            font-size: 150px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 8px rgba(255, 0, 0, 0.8);
+        }
+    </style>    
+</head>
+<body>
+    <!-- Add the audio element with the correct filename -->
+    <audio id="shotgunSound" preload="auto">
+        <source src="half-life-shotgun_B3q382p.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <div class="timer-container" id="timerContainer">
+        <div class="timer" id="timer">5</div>
+    </div>
+    <div class="overlay" id="overlay"></div>
+    <div class="container">
+        <div class="score" id="score">0</div>
+        <div class="lives" id="lives">3</div>
+        <div class="hole" id="hole1">
+            <div class="mole" id="mole1"></div>
+        </div>
+        <div class="hole" id="hole2">
+            <div class="mole" id="mole2"></div>
+        </div>
+        <div class="hole" id="hole3">
+            <div class="mole" id="mole3"></div>
+        </div>                      
+    </div>
+
+    <script>
+        let score = 0;
+        let lives = 3;
+        let gameStarted = false;
+        let soundPlaying = false;
+        let waitingForNextMole = false;
+        
+        const container = document.querySelector('.container');
+        const overlay = document.getElementById('overlay');
+        const timerContainer = document.getElementById('timerContainer');
+        const timerElement = document.getElementById('timer');
+        const shotgunSound = document.getElementById('shotgunSound');
+
+        // Funcție pentru a reda sunetul de shotgun
+        function playShotgunSound() {
+            // Resetează audio-ul la început (în cazul în care încă se redă)
+            shotgunSound.currentTime = 0;
+            
+            // Redă sunetul
+            shotgunSound.play().catch(error => {
+                console.error("Error playing sound:", error);
+                soundPlaying = false; // În caz de eroare, marchează sunetul ca finalizat
+            });
+            
+            // Adaugă un event listener pentru a detecta când sunetul s-a terminat
+            shotgunSound.onended = function() {
+                soundPlaying = false; // Marchează sunetul ca finalizat
+                
+                // Doar dacă nu așteptăm deja următoarea apariție, programează apariția
+                if (!waitingForNextMole && gameStarted) {
+                    scheduleNextMole();
+                }
+            };
+        }
+
+        // Funcție pentru a programa apariția aleatorie a următoarei cârtițe
+        function scheduleNextMole() {
+            // Marchează că așteptăm următoarea cârtiță
+            waitingForNextMole = true;
+            
+            // Generează un timp aleatoriu între 500ms și 2000ms
+            const randomDelay = Math.floor(Math.random() * 1500) + 500;
+            
+            setTimeout(() => {
+                // Doar dacă jocul încă rulează și nu se redă sunetul
+                if (gameStarted && !soundPlaying) {
+                    showMole();
+                    waitingForNextMole = false;
+                } else {
+                    // Dacă condițiile nu sunt îndeplinite, încearcă din nou mai târziu
+                    waitingForNextMole = false;
+                    scheduleNextMole();
+                }
+            }, randomDelay);
+        }
+
+        // Pornește cronometrul pentru numărătoare inversă
+        function startCountdown() {
+            let countdown = 5;
+            timerElement.textContent = countdown;
+            
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                timerElement.textContent = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    timerContainer.style.display = 'none';
+                    gameStarted = true;
+                    // Începe jocul arătând prima cârtiță
+                    scheduleNextMole();
+                }
+            }, 1000);
+        }
+
+        // Funcție pentru a afișa cârtița
+        function showMole() {
+            if (!gameStarted) return;
+            
+            // Alege o gaură aleatorie pentru cârtiță
+            const randomHole = Math.floor(Math.random() * 3) + 1;
+            const mole = document.getElementById(`mole${randomHole}`);
+            mole.style.display = 'block';
+
+            // Setează un timer pentru a ascunde cârtița dacă nu este lovită
+            setTimeout(() => {
+                if (mole.style.display === 'block') {
+                    mole.style.display = 'none';
+                    lives--;
+                    document.getElementById('lives').textContent = lives;
+                    if (lives <= 0) {
+                        alert('Game Over!');
+                        location.reload();
+                    }
+                    
+                    // Programează următoarea cârtiță doar dacă nu se redă sunetul
+                    if (!soundPlaying && !waitingForNextMole) {
+                        scheduleNextMole();
+                    }
+                }
+            }, 1000);
+        }
+
+        document.querySelectorAll('.mole').forEach(mole => {
+            mole.addEventListener('click', () => {
+                // Oprește afișarea cârtiței imediat după click
+                mole.style.display = 'none';
+                
+                // Marchează că sunetul se redă
+                soundPlaying = true;
+                
+                // Redă sunetul de shotgun
+                playShotgunSound();
+                
+                // Adaugă efectul de hit la overlay
+                overlay.classList.add('hit');
+                setTimeout(() => {
+                    overlay.classList.remove('hit');
+                }, 300);
+
+                score++;
+                document.getElementById('score').textContent = score + 15;
+                
+                // Verifică dacă scorul a ajuns la 15 și redirecționează către Contiune.html
+                if (score >= 5) {
+                    window.location.href = "Continue2.html";
+                }
+            });
+        });
+
+        const holes = document.querySelectorAll('.hole');
+        
+        const bloodSplash = document.createElement('div');
+        bloodSplash.classList.add('blood-splash');
+        container.appendChild(bloodSplash);
+
+        holes.forEach((hole, index) => {
+            const hoverImage = hole.querySelector('.hover-image');
+            
+            hole.addEventListener('mousedown', (event) => {
+                if (!gameStarted) return;
+                
+                // Redă sunetul de shotgun la orice mousedown într-o gaură
+                // Dar nu-l reda dacă sunetul deja se redă
+                if (!soundPlaying) {
+                    soundPlaying = true;
+                    playShotgunSound();
+                }
+                
+                if (hoverImage) {
+                    hoverImage.style.left = `${event.offsetX - 50}px`;
+                    hoverImage.style.top = `${event.offsetY - 50}px`;
+                    hoverImage.style.display = 'block';
+                }
+                
+                const splashPositions = [
+                    { left: '-100px', top: `${Math.random() * container.clientHeight}px` },
+                    { right: '-100px', top: `${Math.random() * container.clientHeight}px` },
+                    { left: `${Math.random() * container.clientWidth}px`, top: '-100px' },
+                    { left: `${Math.random() * container.clientWidth}px`, bottom: '-100px' }
+                ];
+                
+                const randomPosition = splashPositions[Math.floor(Math.random() * splashPositions.length)];
+                Object.assign(bloodSplash.style, randomPosition);
+                bloodSplash.style.opacity = '1';
+                
+                setTimeout(() => {
+                    bloodSplash.style.opacity = '0';
+                }, 500);
+            });
+
+            hole.addEventListener('mouseup', () => {
+                if (hoverImage) {
+                    hoverImage.style.display = 'none';
+                }
+            });
+
+            hole.addEventListener('mouseleave', () => {
+                if (hoverImage) {
+                    hoverImage.style.display = 'none';
+                }
+            });
+        });
+
+        // Pornește numărătoarea inversă când pagina se încarcă
+        window.onload = startCountdown;
+    </script>
+</body>
+</html>

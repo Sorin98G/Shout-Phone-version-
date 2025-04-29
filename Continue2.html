@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shot_The_Ber</title>
+</head>
+<style>
+.Poza{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1200px;
+    height: 600px;
+    background-image: url(Continue.png);
+    background-size: contain; /* Asigură că imaginea nu se mărește */
+    background-position: center;
+    background-repeat: no-repeat;
+    transform: translate(-50%, -50%); /* Centrează exact */
+    overflow: hidden;
+    z-index: 0;
+}
+
+.Body{
+    background-color: black;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.simple-button {
+    position: absolute;
+    top: 65%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    padding: 40px 25px;
+    background-color: #23486f00;
+    color: white;
+    border: 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: none;
+    z-index: 1; /* Asigură că butonul apare deasupra imaginii */
+}
+</style>
+<body class="Body">
+    <div class="Poza"></div>  
+    <a href="Level3.html" class="simple-button"></a>
+</body>
+</html>
