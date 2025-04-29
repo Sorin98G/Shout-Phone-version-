@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Whack-a-Mole</title>
     <style>
         body {
@@ -10,7 +10,9 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            width: 100vw;
             margin: 0;
+            padding: 0;
             background: url('background.jpg') no-repeat center center;
             background-size: cover;
             background-color: black;
@@ -32,8 +34,6 @@
         }
         .container {
             display: flex;
-            background-image: url('Poza de fundal.png');
-            background-size: cover;
             position: relative;
             overflow: hidden;
             z-index: 1;
@@ -46,19 +46,25 @@
             max-width: 1200px;
             height: 80vh;
             max-height: 600px;
+            background-image: url('Poza de fundal.png');
+            background-size: cover;
+            background-position: center;
         }
         /* Stiluri pentru orientarea pe verticală (telefon și tabletă portret) */
         .container.vertical {
             flex-direction: column;
-            width: 85vw;
-            max-width: 600px;
-            height: 80vh;
-            max-height: 1200px;
+            width: 95vw;
+            height: 95vh;
+            background-image: url('Poza de fundal.png');
+            background-size: cover;
+            background-position: center;
+            /* Rotește imaginea de fundal pe verticală dacă e necesar */
+            transform: rotate(0deg);
         }
         .hole {
             display: flex;
             justify-content: center;
-            align-items: flex-end;
+            align-items: center;
             position: relative;
             overflow: hidden;
         }
@@ -71,12 +77,17 @@
         .vertical .hole {
             width: 100%;
             height: 33.33%;
+            /* Adăugăm un border pentru a delimita găurile */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Ultima gaură nu are border jos */
+        .vertical #hole3 {
+            border-bottom: none;
         }
         .mole {
             position: absolute;
             cursor: pointer;
             display: none;
-            background-image: url('urs_de_omarat-removebg-preview.png');
             background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
@@ -84,45 +95,56 @@
         }
         /* Stiluri pentru cârtiță în modul orizontal */
         .horizontal .mole {
-            width: 80%;
-            height: 80%;
+            width: 70%;
+            height: 70%;
             bottom: 0;
+            background-image: url('urs_de_omarat-removebg-preview.png');
         }
         /* Stiluri pentru cârtiță în modul vertical */
         .vertical .mole {
-            width: 80%;
-            height: 80%;
-            bottom: 0;
+            width: 60%;
+            height: 60%;
+            background-image: url('urs_de_omarat-removebg-preview.png');
+            /* Centrăm în gaură */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
         }
         .score {
             position: absolute;
-            font-size: 25px;
             color: white;
             z-index: 200;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
         .lives {
             position: absolute;
-            font-size: 25px;
             color: white;
             z-index: 200;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
         /* Poziționarea scorului și a vieților în modul orizontal */
         .horizontal .score {
             top: 35px;
             right: 210px;
+            font-size: 25px;
         }
         .horizontal .lives {
             top: 69px;
             right: 220px;
+            font-size: 25px;
         }
         /* Poziționarea scorului și a vieților în modul vertical */
         .vertical .score {
-            top: 35px;
-            right: 35px;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
         }
         .vertical .lives {
-            top: 69px;
-            right: 45px;
+            top: 50px;
+            right: 20px;
+            font-size: 24px;
         }
         .hover-image {
             position: absolute;
@@ -164,7 +186,7 @@
                 font-size: 100px;
             }
             .vertical .score, .vertical .lives {
-                font-size: 20px;
+                font-size: 22px;
             }
         }
         /* Stiluri adaptate pentru telefoane foarte mici */
@@ -172,8 +194,15 @@
             .timer {
                 font-size: 80px;
             }
-            .vertical .score, .vertical .lives {
-                font-size: 18px;
+            .vertical .score {
+                top: 15px;
+                right: 15px;
+                font-size: 20px;
+            }
+            .vertical .lives {
+                top: 45px;
+                right: 15px;
+                font-size: 20px;
             }
         }
     </style>    
@@ -229,17 +258,83 @@
             
             // Stabilește clasa containerului în funcție de dispozitiv și orientare
             if (isMobile && isPortrait) {
+                // Pentru telefoane în mod portrait, folosim layout vertical
                 gameContainer.classList.remove('horizontal');
                 gameContainer.classList.add('vertical');
+                
+                // Forțăm modul fullscreen pentru dispozitive mobile
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        // Ignorăm erorile de fullscreen - unele browsere nu permit
+                        // acest lucru fără o interacțiune directă a utilizatorului
+                    });
+                }
             } else {
+                // Pentru laptop/desktop și tablete în landscape, folosim layout orizontal
                 gameContainer.classList.remove('vertical');
                 gameContainer.classList.add('horizontal');
+            }
+            
+            // Adaptăm dimensiunile mole-urilor în funcție de dispozitiv
+            adjustMoleSize();
+        }
+        
+        // Funcție pentru ajustarea dimensiunii cârtiței în funcție de dispozitiv
+        function adjustMoleSize() {
+            const moles = document.querySelectorAll('.mole');
+            
+            if (isMobile && isPortrait) {
+                // Pentru telefoane în mod portrait, facem cârtiță mai mare
+                // pentru a facilita interacțiunea pe touch
+                moles.forEach(mole => {
+                    mole.style.width = '70%';
+                    mole.style.height = '70%';
+                });
+            } else {
+                // Pentru laptop/desktop, păstrăm dimensiunea standard
+                moles.forEach(mole => {
+                    mole.style.width = '80%';
+                    mole.style.height = '80%';
+                });
             }
         }
 
         // Funcție pentru a actualiza layout-ul când orientarea se schimbă
         function updateLayout() {
             detectDevice();
+            
+            // Adaptăm containerul pentru modul vertical pe telefon
+            if (isMobile && isPortrait) {
+                // Utilizăm un timeout pentru a permite redimensionarea completă
+                setTimeout(() => {
+                    // Ajustăm layout-ul pentru afișaj vertical
+                    const windowHeight = window.innerHeight;
+                    const windowWidth = window.innerWidth;
+                    
+                    // Setam dimensiunile containerului pentru a ocupa tot ecranul disponibil
+                    gameContainer.style.height = (windowHeight * 0.95) + 'px';
+                    gameContainer.style.width = (windowWidth * 0.95) + 'px';
+                    
+                    // Ajustăm pozițiile pentru scor și vieți
+                    document.getElementById('score').style.right = '20px';
+                    document.getElementById('lives').style.right = '20px';
+                    
+                    // Ajustăm și dimensiunea găurilor pentru a acoperi tot ecranul
+                    const holes = document.querySelectorAll('.hole');
+                    holes.forEach(hole => {
+                        hole.style.height = (windowHeight * 0.95 / 3) + 'px';
+                    });
+                    
+                    // Forțăm redimensionarea cârtiței
+                    adjustMoleSize();
+                }, 200);
+            } else {
+                // Pentru laptop/desktop, revenim la dimensiunile standard
+                gameContainer.style.height = '';
+                gameContainer.style.width = '';
+                document.getElementById('score').style.right = '';
+                document.getElementById('lives').style.right = '';
+            }
         }
 
         // Funcție pentru a reda sunetul de shotgun
@@ -450,6 +545,27 @@
             
             // Adaugă suport pentru touch events
             handleTouchInteraction();
+            
+            // Adaugă orientarea pe tot ecranul pentru dispozitive mobile
+            if (isMobile) {
+                // Adăugăm meta viewport pentru a asigura afișarea corectă pe mobile
+                const metaViewport = document.createElement('meta');
+                metaViewport.name = 'viewport';
+                metaViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                document.head.appendChild(metaViewport);
+                
+                // Previne scrollarea paginii pe mobile
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+                document.body.style.height = '100%';
+                
+                // Adaugă un listener pentru orientare
+                window.addEventListener('orientationchange', function() {
+                    // Facem o scurtă pauză pentru a permite browserului să actualizeze dimensiunile
+                    setTimeout(updateLayout, 300);
+                });
+            }
             
             // Pornește numărătoarea inversă
             startCountdown();
