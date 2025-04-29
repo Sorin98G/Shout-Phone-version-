@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Whack-a-Mole</title>
     <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
         body {
             display: flex;
             justify-content: center;
@@ -13,11 +18,12 @@
             width: 100vw;
             margin: 0;
             padding: 0;
-            background: url('background.jpg') no-repeat center center;
-            background-size: cover;
             background-color: black;
             overflow: hidden;
+            touch-action: none;
+            position: fixed;
         }
+        
         .overlay {
             position: fixed;
             top: 0;
@@ -26,19 +32,32 @@
             bottom: 0;
             background: rgba(255, 0, 0, 0);
             pointer-events: none;
-            transition: background 0.3s ease;
+            transition: background 0.2s ease;
             z-index: 50;
         }
+        
         .overlay.hit {
             background: rgba(255, 0, 0, 0.3);
         }
+        
         .container {
             display: flex;
             position: relative;
             overflow: hidden;
             z-index: 1;
-            /* Dimensiunile vor fi actualizate de JavaScript */
+            border-radius: 10px;
         }
+        
+        /* Stiluri pentru orientarea pe verticală (telefon și tabletă portret) */
+        .container.vertical {
+            flex-direction: column;
+            width: 95vw;
+            height: 95vh;
+            background-image: url('Poza de fundal.png');
+            background-size: cover;
+            background-position: center;
+        }
+        
         /* Stiluri pentru orientarea pe orizontală (laptop și tabletă peisaj) */
         .container.horizontal {
             flex-direction: row;
@@ -50,17 +69,7 @@
             background-size: cover;
             background-position: center;
         }
-        /* Stiluri pentru orientarea pe verticală (telefon și tabletă portret) */
-        .container.vertical {
-            flex-direction: column;
-            width: 95vw;
-            height: 95vh;
-            background-image: url('Poza de fundal.png');
-            background-size: cover;
-            background-position: center;
-            /* Rotește imaginea de fundal pe verticală dacă e necesar */
-            transform: rotate(0deg);
-        }
+        
         .hole {
             display: flex;
             justify-content: center;
@@ -68,22 +77,30 @@
             position: relative;
             overflow: hidden;
         }
-        /* Stiluri pentru găuri în modul orizontal */
-        .horizontal .hole {
-            width: 33.33%;
-            height: 100%;
-        }
+        
         /* Stiluri pentru găuri în modul vertical */
         .vertical .hole {
             width: 100%;
             height: 33.33%;
-            /* Adăugăm un border pentru a delimita găurile */
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        /* Ultima gaură nu are border jos */
+        
+        /* Stiluri pentru găuri în modul orizontal */
+        .horizontal .hole {
+            width: 33.33%;
+            height: 100%;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Ultima gaură nu are border jos/dreapta */
         .vertical #hole3 {
             border-bottom: none;
         }
+        
+        .horizontal #hole3 {
+            border-right: none;
+        }
+        
         .mole {
             position: absolute;
             cursor: pointer;
@@ -92,76 +109,86 @@
             background-position: center;
             background-repeat: no-repeat;
             z-index: 100;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
-        /* Stiluri pentru cârtiță în modul orizontal */
-        .horizontal .mole {
-            width: 70%;
-            height: 70%;
-            bottom: 0;
-            background-image: url('urs_de_omarat-removebg-preview.png');
-        }
-        /* Stiluri pentru cârtiță în modul vertical */
+        
+        /* Stiluri pentru cârtiță în modul vertical (telefon) */
         .vertical .mole {
             width: 60%;
             height: 60%;
             background-image: url('urs_de_omarat-removebg-preview.png');
-            /* Centrăm în gaură */
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
         }
-        .score {
+        
+        /* Stiluri pentru cârtiță în modul orizontal */
+        .horizontal .mole {
+            width: 70%;
+            height: 70%;
+            background-image: url('urs_de_omarat-removebg-preview.png');
+            bottom: 0;
+        }
+        
+        .touch-area {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 200;
+            cursor: pointer;
+        }
+        
+        .score, .lives {
             position: absolute;
             color: white;
             z-index: 200;
             font-weight: bold;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            font-family: Arial, sans-serif;
         }
-        .lives {
-            position: absolute;
-            color: white;
-            z-index: 200;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-        }
-        /* Poziționarea scorului și a vieților în modul orizontal */
-        .horizontal .score {
-            top: 35px;
-            right: 210px;
-            font-size: 25px;
-        }
-        .horizontal .lives {
-            top: 69px;
-            right: 220px;
-            font-size: 25px;
-        }
+        
         /* Poziționarea scorului și a vieților în modul vertical */
         .vertical .score {
             top: 20px;
             right: 20px;
             font-size: 24px;
         }
+        
         .vertical .lives {
             top: 50px;
             right: 20px;
             font-size: 24px;
         }
-        .hover-image {
-            position: absolute;
-            max-width: 500px;
-            max-height: 500px;
-            display: none;
-            z-index: 999;
+        
+        /* Poziționarea scorului și a vieților în modul orizontal */
+        .horizontal .score {
+            top: 35px;
+            right: 210px;
+            font-size: 25px;
         }
+        
+        .horizontal .lives {
+            top: 69px;
+            right: 220px;
+            font-size: 25px;
+        }
+        
         .blood-splash {
             position: absolute;
-            width: 200px;
-            height: 200px;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(255,0,0,0.8) 0%, rgba(255,0,0,0) 70%);
             border-radius: 50%;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
+            z-index: 150;
         }
+        
         .timer-container {
             position: fixed;
             top: 0;
@@ -174,12 +201,57 @@
             align-items: center;
             z-index: 1000;
         }
+        
         .timer {
             font-size: 150px;
             color: white;
             font-weight: bold;
             text-shadow: 2px 2px 8px rgba(255, 0, 0, 0.8);
+            font-family: Arial, sans-serif;
         }
+        
+        /* Game over popup */
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 2000;
+        }
+        
+        .game-over-text {
+            font-size: 48px;
+            color: red;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            font-family: Arial, sans-serif;
+        }
+        
+        .play-again {
+            background-color: #FF5722;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .play-again:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
         /* Stiluri adaptate pentru dispozitive cu ecran mic */
         @media (max-width: 768px) {
             .timer {
@@ -188,7 +260,15 @@
             .vertical .score, .vertical .lives {
                 font-size: 22px;
             }
+            .game-over-text {
+                font-size: 36px;
+            }
+            .play-again {
+                padding: 12px 24px;
+                font-size: 20px;
+            }
         }
+        
         /* Stiluri adaptate pentru telefoane foarte mici */
         @media (max-width: 480px) {
             .timer {
@@ -204,35 +284,57 @@
                 right: 15px;
                 font-size: 20px;
             }
+            .game-over-text {
+                font-size: 32px;
+                text-align: center;
+                padding: 0 20px;
+            }
         }
     </style>    
 </head>
 <body>
-    <!-- Add the audio element with the correct filename -->
+    <!-- Audio element pentru sunetul de shotgun -->
     <audio id="shotgunSound" preload="auto">
         <source src="half-life-shotgun_B3q382p.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
 
+    <!-- Containere pentru timer și mesaje de joc -->
     <div class="timer-container" id="timerContainer">
         <div class="timer" id="timer">5</div>
     </div>
+    
+    <div class="game-over" id="gameOver">
+        <div class="game-over-text">GAME OVER!</div>
+        <button class="play-again" id="playAgain">Play Again</button>
+    </div>
+    
     <div class="overlay" id="overlay"></div>
+    
+    <!-- Containerul principal al jocului -->
     <div class="container" id="gameContainer">
         <div class="score" id="score">0</div>
         <div class="lives" id="lives">3</div>
+        
         <div class="hole" id="hole1">
             <div class="mole" id="mole1"></div>
+            <div class="touch-area" id="touchArea1"></div>
         </div>
         <div class="hole" id="hole2">
             <div class="mole" id="mole2"></div>
+            <div class="touch-area" id="touchArea2"></div>
         </div>
         <div class="hole" id="hole3">
             <div class="mole" id="mole3"></div>
-        </div>                      
+            <div class="touch-area" id="touchArea3"></div>
+        </div>
+        
+        <!-- Element pentru efectul de sânge -->
+        <div class="blood-splash" id="bloodSplash"></div>
     </div>
 
     <script>
+        // Variabile globale
         let score = 0;
         let lives = 3;
         let gameStarted = false;
@@ -240,15 +342,22 @@
         let waitingForNextMole = false;
         let isMobile = false;
         let isPortrait = false;
+        let currentMole = null;
+        let moleTimeout = null;
+        let touchStarted = false;
         
+        // Elemente DOM
         const container = document.querySelector('.container');
         const overlay = document.getElementById('overlay');
         const timerContainer = document.getElementById('timerContainer');
         const timerElement = document.getElementById('timer');
         const shotgunSound = document.getElementById('shotgunSound');
         const gameContainer = document.getElementById('gameContainer');
-
-        // Funcție pentru a detecta tipul de dispozitiv și orientarea
+        const bloodSplash = document.getElementById('bloodSplash');
+        const gameOverContainer = document.getElementById('gameOver');
+        const playAgainButton = document.getElementById('playAgain');
+        
+        // Funcție pentru detectarea dispozitivului și orientării
         function detectDevice() {
             // Detectează dacă e mobil
             isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -256,84 +365,69 @@
             // Detectează orientarea
             isPortrait = window.innerHeight > window.innerWidth;
             
-            // Stabilește clasa containerului în funcție de dispozitiv și orientare
-            if (isMobile && isPortrait) {
-                // Pentru telefoane în mod portrait, folosim layout vertical
+            // Aplică clasa corespunzătoare layout-ului
+            if (isPortrait) {
                 gameContainer.classList.remove('horizontal');
                 gameContainer.classList.add('vertical');
-                
-                // Forțăm modul fullscreen pentru dispozitive mobile
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        // Ignorăm erorile de fullscreen - unele browsere nu permit
-                        // acest lucru fără o interacțiune directă a utilizatorului
-                    });
-                }
             } else {
-                // Pentru laptop/desktop și tablete în landscape, folosim layout orizontal
                 gameContainer.classList.remove('vertical');
                 gameContainer.classList.add('horizontal');
             }
             
-            // Adaptăm dimensiunile mole-urilor în funcție de dispozitiv
+            // Ajustează dimensiunile mole-urilor în funcție de dispozitiv
             adjustMoleSize();
         }
         
-        // Funcție pentru ajustarea dimensiunii cârtiței în funcție de dispozitiv
+        // Funcție pentru ajustarea dimensiunii cârtiței în funcție de dispozitiv și orientare
         function adjustMoleSize() {
             const moles = document.querySelectorAll('.mole');
             
-            if (isMobile && isPortrait) {
-                // Pentru telefoane în mod portrait, facem cârtiță mai mare
-                // pentru a facilita interacțiunea pe touch
+            if (isPortrait) {
+                // Pentru mod portret, adaptăm dimensiunea cârtiței
+                moles.forEach(mole => {
+                    if (isMobile) {
+                        // Pe telefoane facem cârtiță mai mare pentru touch
+                        mole.style.width = '70%';
+                        mole.style.height = '70%';
+                    } else {
+                        mole.style.width = '60%';
+                        mole.style.height = '60%';
+                    }
+                });
+            } else {
+                // Pentru mod landscape
                 moles.forEach(mole => {
                     mole.style.width = '70%';
                     mole.style.height = '70%';
                 });
-            } else {
-                // Pentru laptop/desktop, păstrăm dimensiunea standard
-                moles.forEach(mole => {
-                    mole.style.width = '80%';
-                    mole.style.height = '80%';
-                });
             }
         }
 
-        // Funcție pentru a actualiza layout-ul când orientarea se schimbă
+        // Funcție pentru actualizarea layout-ului când se schimbă orientarea
         function updateLayout() {
             detectDevice();
             
-            // Adaptăm containerul pentru modul vertical pe telefon
-            if (isMobile && isPortrait) {
-                // Utilizăm un timeout pentru a permite redimensionarea completă
+            // Ajustări suplimentare pentru layout-ul vertical (telefon)
+            if (isPortrait) {
+                // Timeout pentru a permite redimensionarea completă
                 setTimeout(() => {
-                    // Ajustăm layout-ul pentru afișaj vertical
                     const windowHeight = window.innerHeight;
                     const windowWidth = window.innerWidth;
                     
-                    // Setam dimensiunile containerului pentru a ocupa tot ecranul disponibil
+                    // Setăm dimensiunile containerului pentru a ocupa tot ecranul disponibil
                     gameContainer.style.height = (windowHeight * 0.95) + 'px';
                     gameContainer.style.width = (windowWidth * 0.95) + 'px';
-                    
-                    // Ajustăm pozițiile pentru scor și vieți
-                    document.getElementById('score').style.right = '20px';
-                    document.getElementById('lives').style.right = '20px';
                     
                     // Ajustăm și dimensiunea găurilor pentru a acoperi tot ecranul
                     const holes = document.querySelectorAll('.hole');
                     holes.forEach(hole => {
                         hole.style.height = (windowHeight * 0.95 / 3) + 'px';
                     });
-                    
-                    // Forțăm redimensionarea cârtiței
-                    adjustMoleSize();
                 }, 200);
             } else {
                 // Pentru laptop/desktop, revenim la dimensiunile standard
                 gameContainer.style.height = '';
                 gameContainer.style.width = '';
-                document.getElementById('score').style.right = '';
-                document.getElementById('lives').style.right = '';
             }
         }
 
@@ -345,15 +439,15 @@
             // Redă sunetul
             shotgunSound.play().catch(error => {
                 console.error("Error playing sound:", error);
-                soundPlaying = false; // În caz de eroare, marchează sunetul ca finalizat
+                soundPlaying = false;
             });
             
-            // Adaugă un event listener pentru a detecta când sunetul s-a terminat
+            // Eveniment pentru când sunetul s-a terminat
             shotgunSound.onended = function() {
-                soundPlaying = false; // Marchează sunetul ca finalizat
+                soundPlaying = false;
                 
-                // Doar dacă nu așteptăm deja următoarea apariție, programează apariția
-                if (!waitingForNextMole && gameStarted) {
+                // Programăm apariția următoarei cârtițe dacă jocul este încă activ
+                if (gameStarted && lives > 0 && !waitingForNextMole) {
                     scheduleNextMole();
                 }
             };
@@ -368,15 +462,11 @@
             const randomDelay = Math.floor(Math.random() * 1500) + 500;
             
             setTimeout(() => {
-                // Doar dacă jocul încă rulează și nu se redă sunetul
-                if (gameStarted && !soundPlaying) {
+                // Verificăm dacă jocul încă rulează
+                if (gameStarted && lives > 0) {
                     showMole();
-                    waitingForNextMole = false;
-                } else {
-                    // Dacă condițiile nu sunt îndeplinite, încearcă din nou mai târziu
-                    waitingForNextMole = false;
-                    scheduleNextMole();
                 }
+                waitingForNextMole = false;
             }, randomDelay);
         }
 
@@ -401,140 +491,184 @@
 
         // Funcție pentru a afișa cârtița
         function showMole() {
-            if (!gameStarted) return;
+            if (!gameStarted || lives <= 0) return;
+            
+            // Anulăm timeout-ul anterior dacă există
+            if (moleTimeout) {
+                clearTimeout(moleTimeout);
+            }
+            
+            // Ascundem toate cârtițele înainte de a afișa una nouă
+            document.querySelectorAll('.mole').forEach(m => {
+                m.style.display = 'none';
+            });
             
             // Alege o gaură aleatorie pentru cârtiță
             const randomHole = Math.floor(Math.random() * 3) + 1;
-            const mole = document.getElementById(`mole${randomHole}`);
-            mole.style.display = 'block';
+            currentMole = document.getElementById(`mole${randomHole}`);
+            currentMole.style.display = 'block';
 
             // Setează un timer pentru a ascunde cârtița dacă nu este lovită
-            setTimeout(() => {
-                if (mole.style.display === 'block') {
-                    mole.style.display = 'none';
-                    lives--;
-                    document.getElementById('lives').textContent = lives;
-                    if (lives <= 0) {
-                        alert('Game Over!');
-                        location.reload();
-                    }
+            moleTimeout = setTimeout(() => {
+                if (currentMole && currentMole.style.display === 'block') {
+                    currentMole.style.display = 'none';
+                    currentMole = null;
                     
-                    // Programează următoarea cârtiță doar dacă nu se redă sunetul
-                    if (!soundPlaying && !waitingForNextMole) {
-                        scheduleNextMole();
+                    // Scade viața doar dacă jocul este încă activ
+                    if (gameStarted && lives > 0) {
+                        lives--;
+                        document.getElementById('lives').textContent = lives;
+                        
+                        if (lives <= 0) {
+                            endGame();
+                        } else if (!waitingForNextMole && !soundPlaying) {
+                            // Programează următoarea cârtiță
+                            scheduleNextMole();
+                        }
                     }
                 }
-            }, 1000);
+            }, 1200); // Timp un pic mai lung pentru dispozitive touch
+        }
+        
+        // Funcție pentru terminarea jocului
+        function endGame() {
+            gameStarted = false;
+            gameOverContainer.style.display = 'flex';
+        }
+        
+        // Funcție pentru resetarea jocului
+        function resetGame() {
+            score = 0;
+            lives = 3;
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            
+            // Ascundem toate cârtițele
+            document.querySelectorAll('.mole').forEach(mole => {
+                mole.style.display = 'none';
+            });
+            
+            // Ascundem game over
+            gameOverContainer.style.display = 'none';
+            
+            // Resetăm timer-ul și pornim numărătoarea inversă
+            timerContainer.style.display = 'flex';
+            startCountdown();
+        }
+        
+        // Funcție pentru efectul de lovitură (blood splash și overlay roșu)
+        function showHitEffect(x, y) {
+            // Setăm poziția efectului de sânge
+            bloodSplash.style.left = `${x - 60}px`;
+            bloodSplash.style.top = `${y - 60}px`;
+            bloodSplash.style.opacity = '1';
+            
+            // Adăugăm efectul de hit la overlay
+            overlay.classList.add('hit');
+            
+            // Înlăturăm efectele după un timp scurt
+            setTimeout(() => {
+                bloodSplash.style.opacity = '0';
+                overlay.classList.remove('hit');
+            }, 300);
+        }
+        
+        // Funcție pentru lovirea cârtiței
+        function hitMole(x, y) {
+            if (!gameStarted || lives <= 0 || !currentMole || currentMole.style.display !== 'block') {
+                return;
+            }
+            
+            // Ascunde cârtița imediat după hit
+            currentMole.style.display = 'none';
+            
+            // Anulăm timeout-ul cârtiței
+            if (moleTimeout) {
+                clearTimeout(moleTimeout);
+                moleTimeout = null;
+            }
+            
+            // Reset current mole
+            currentMole = null;
+            
+            // Afișăm efectul de lovitură
+            showHitEffect(x, y);
+            
+            // Redăm sunetul
+            soundPlaying = true;
+            playShotgunSound();
+            
+            // Incrementăm scorul
+            score++;
+            document.getElementById('score').textContent = score;
+            
+            // Verificăm dacă s-a atins scorul pentru câștig
+            if (score >= 15) {
+                window.location.href = 'Contiune.html';
+            }
         }
 
-        document.querySelectorAll('.mole').forEach(mole => {
-            mole.addEventListener('click', () => {
-                // Oprește afișarea cârtiței imediat după click
-                mole.style.display = 'none';
+        // Configurăm evenimentele pentru zonele tactile
+        function setupTouchAreas() {
+            const touchAreas = document.querySelectorAll('.touch-area');
+            
+            touchAreas.forEach((area, index) => {
+                // Adăugăm eventi,ente pentru desktop
+                area.addEventListener('mousedown', (e) => {
+                    handleInteraction(e, index + 1);
+                });
                 
-                // Marchează că sunetul se redă
-                soundPlaying = true;
-                
-                // Redă sunetul de shotgun
-                playShotgunSound();
-                
-                // Adaugă efectul de hit la overlay
-                overlay.classList.add('hit');
-                setTimeout(() => {
-                    overlay.classList.remove('hit');
-                }, 300);
-
-                score++;
-                document.getElementById('score').textContent = score;
-                
-                // Verifică dacă scorul a ajuns la 15 și redirecționează către Contiune.html
-                if (score >= 15) {
-                    window.location.href = 'Contiune.html';
-                }
+                // Adăugăm evenimente pentru dispozitive mobile
+                area.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); // Prevenim comportamentul implicit
+                    const touch = e.touches[0];
+                    handleInteraction({
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    }, index + 1);
+                }, { passive: false });
             });
-        });
-
-        const holes = document.querySelectorAll('.hole');
-        
-        const bloodSplash = document.createElement('div');
-        bloodSplash.classList.add('blood-splash');
-        container.appendChild(bloodSplash);
-
-        // Adaptează evenimentele pentru dispozitive touch
-        function handleTouchInteraction() {
-            holes.forEach((hole, index) => {
-                const hoverImage = hole.querySelector('.hover-image');
+            
+            // Funcție pentru manipularea interacțiunii (mouse sau touch)
+            function handleInteraction(e, holeNumber) {
+                // Extragerea poziției x și y pentru efectul de hit
+                const rect = gameContainer.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
                 
-                // Eveniment pentru click/tap
-                hole.addEventListener('mousedown', handleInteraction);
-                hole.addEventListener('touchstart', handleInteraction);
+                // Verificăm dacă în această gaură este o cârtiță vizibilă
+                const mole = document.getElementById(`mole${holeNumber}`);
                 
-                function handleInteraction(event) {
-                    if (!gameStarted) return;
+                if (mole === currentMole && mole.style.display === 'block') {
+                    // Am lovit cârtița
+                    hitMole(x, y);
+                } else {
+                    // Am lovit într-o gaură goală, doar afișăm efectul
+                    showHitEffect(x, y);
                     
-                    // Previne comportamentul default pentru touch events
-                    if (event.type === 'touchstart') {
-                        event.preventDefault();
-                    }
-                    
-                    // Redă sunetul de shotgun la orice mousedown/touchstart într-o gaură
+                    // Redăm sunetul doar dacă nu se redă deja
                     if (!soundPlaying) {
                         soundPlaying = true;
                         playShotgunSound();
                     }
-                    
-                    if (hoverImage) {
-                        // Calculează poziția pentru hover image
-                        let posX, posY;
-                        if (event.type === 'touchstart') {
-                            const touch = event.touches[0];
-                            const rect = hole.getBoundingClientRect();
-                            posX = touch.clientX - rect.left;
-                            posY = touch.clientY - rect.top;
-                        } else {
-                            posX = event.offsetX;
-                            posY = event.offsetY;
-                        }
-                        
-                        hoverImage.style.left = `${posX - 50}px`;
-                        hoverImage.style.top = `${posY - 50}px`;
-                        hoverImage.style.display = 'block';
-                    }
-                    
-                    // Efect de sânge
-                    const containerRect = container.getBoundingClientRect();
-                    const splashPositions = [
-                        { left: '-100px', top: `${Math.random() * containerRect.height}px` },
-                        { right: '-100px', top: `${Math.random() * containerRect.height}px` },
-                        { left: `${Math.random() * containerRect.width}px`, top: '-100px' },
-                        { left: `${Math.random() * containerRect.width}px`, bottom: '-100px' }
-                    ];
-                    
-                    const randomPosition = splashPositions[Math.floor(Math.random() * splashPositions.length)];
-                    Object.assign(bloodSplash.style, randomPosition);
-                    bloodSplash.style.opacity = '1';
-                    
-                    setTimeout(() => {
-                        bloodSplash.style.opacity = '0';
-                    }, 500);
                 }
-
-                // Eveniment pentru când mouse-ul/touch-ul e ridicat
-                hole.addEventListener('mouseup', hideHoverImage);
-                hole.addEventListener('touchend', hideHoverImage);
-                
-                function hideHoverImage() {
-                    if (hoverImage) {
-                        hoverImage.style.display = 'none';
-                    }
-                }
-
-                // Când mouse-ul/touch-ul iese din gaură
-                hole.addEventListener('mouseleave', hideHoverImage);
-                hole.addEventListener('touchcancel', hideHoverImage);
-            });
+            }
         }
 
+        // Butonul pentru restart
+        playAgainButton.addEventListener('click', resetGame);
+        
+        // Prevenim scroll-ul și alte evenimente pe touchscreen
+        document.addEventListener('touchmove', (e) => {
+            if (gameStarted) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        document.addEventListener('touchend', () => {
+            touchStarted = false;
+        });
+        
         // Inițializează jocul
         window.onload = function() {
             // Detectează dispozitivul și orientarea
@@ -542,30 +676,15 @@
             
             // Adaugă eveniment pentru schimbarea orientării
             window.addEventListener('resize', updateLayout);
+            window.addEventListener('orientationchange', function() {
+                setTimeout(updateLayout, 300);
+            });
             
-            // Adaugă suport pentru touch events
-            handleTouchInteraction();
+            // Configurăm zonele tactile
+            setupTouchAreas();
             
-            // Adaugă orientarea pe tot ecranul pentru dispozitive mobile
-            if (isMobile) {
-                // Adăugăm meta viewport pentru a asigura afișarea corectă pe mobile
-                const metaViewport = document.createElement('meta');
-                metaViewport.name = 'viewport';
-                metaViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-                document.head.appendChild(metaViewport);
-                
-                // Previne scrollarea paginii pe mobile
-                document.body.style.overflow = 'hidden';
-                document.body.style.position = 'fixed';
-                document.body.style.width = '100%';
-                document.body.style.height = '100%';
-                
-                // Adaugă un listener pentru orientare
-                window.addEventListener('orientationchange', function() {
-                    // Facem o scurtă pauză pentru a permite browserului să actualizeze dimensiunile
-                    setTimeout(updateLayout, 300);
-                });
-            }
+            // Pentru utilizare pe ecrane mari sau mici
+            updateLayout();
             
             // Pornește numărătoarea inversă
             startCountdown();
